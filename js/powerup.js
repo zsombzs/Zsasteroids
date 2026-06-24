@@ -14,9 +14,18 @@ class PowerUp extends CircleShape {
 
     draw(ctx) {
         if (this.imageLoaded) {
+            // A FELVÉTELI hitbox a player.collidesWithCircle-ben player.radius (65.25) +
+            // this.radius alapján számít — ez nagyobb, mint amekkorának az ikon eddig
+            // látszott (a player kirajzolt sugara ~53.5 space-en). Ezért az ikont
+            // VIZUÁLISAN nagyobbra rajzoljuk (VISUAL_SCALE), az ütközés VÁLTOZATLAN —
+            // így a kép széle nagyjából a felvétel pillanatában ér a hajóhoz.
+            const VISUAL_SCALE = 1.3;
+            // Space témán maga az ikon pulzál (mérete), hogy jobban kitűnjön a pályán.
+            const pulse = theme === 'space' ? (1 + 0.12 * Math.sin(Date.now() / 180)) : 1;
+            const r = this.radius * VISUAL_SCALE * pulse;
             ctx.save();
             ctx.translate(this.position.x, this.position.y);
-            ctx.drawImage(this.image, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+            ctx.drawImage(this.image, -r, -r, r * 2, r * 2);
             ctx.restore();
         }
 /*              // Debug: kör hitbox kirajzolása

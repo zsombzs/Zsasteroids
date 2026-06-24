@@ -32,81 +32,46 @@ body {
     image-rendering: pixelated;
   }
   
-  #mainMenuButton {
-    position: absolute;
-    top: 0px;
-    left: -10px;
-    transform: translateX(-100%);
-    padding: calc(0.4rem + 0.2vw) calc(0.5rem + 0.5vw); 
-    background-color:rgb(108, 21, 21);
-    color: rgb(255, 255, 255);
-    border: 2px solid #000000;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: calc(1rem + 0.5vw);
-}
-#mainMenuButton:hover {
-    background-color: rgb(219, 29, 29);
-}
-
-#musicToggle {
+/* ── Modern, üveg-stílusú vezérlőgombok (vissza / zene / némítás) ── */
+#mainMenuButton,
+#musicToggle,
+#soundToggle {
   position: absolute;
-  top: 0px;
-  right: -5px;
-  transform: translateX(100%);
-  padding: calc(0.4rem + 0.2vw) calc(0.5rem + 0.5vw);
-  background-color: rgb(108, 21, 21);
-  color: white;
-  border: 2px solid #000000;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: calc(1.2rem + 0.3vw);
+  width: clamp(40px, 4.2vw, 52px);
+  height: clamp(40px, 4.2vw, 52px);
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-#musicToggle i {
-  pointer-events: none;
-}
-
-#musicToggle:hover {
-  background-color: rgb(219, 29, 29);
-}
-
-#soundToggle {
-  position: absolute;
-  top: 70px;
-  right: -5px;
-  transform: translateX(100%);
-  padding: calc(0.4rem + 0.2vw) calc(0.5rem + 0.5vw); 
-  background-color:rgb(108, 21, 21);
-  color: rgb(255, 255, 255);
-  border: 2px solid #000000;
-  border-radius: 5px;
+  background: rgba(11, 14, 27, 0.6);
+  border: 1px solid rgba(255, 60, 60, 0.35);
+  border-radius: 50%;
+  color: #fff;
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
+  line-height: 1;
   cursor: pointer;
-  font-size: calc(1.2rem + 0.3vw);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
 }
+
+#mainMenuButton:hover,
+#musicToggle:hover,
 #soundToggle:hover {
-  background-color: rgb(219, 29, 29);
+  background: rgba(219, 29, 29, 0.9);
+  border-color: rgba(255, 90, 90, 0.85);
+  box-shadow: 0 0 18px rgba(219, 29, 29, 0.55);
 }
 
-#soundVariantToggle {
-  position: absolute;
-  top: 140px;
-  right: -5px;
-  transform: translateX(100%);
-  padding: calc(0.4rem + 0.2vw) calc(0.5rem + 0.5vw); 
-  background-color:rgb(108, 21, 21);
-  color: rgb(255, 255, 255);
-  border: 2px solid #000000;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: calc(0.8rem + 0.15vw);
-}
-#soundVariantToggle:hover {
-  background-color: rgb(219, 29, 29);
-}
+#mainMenuButton i,
+#musicToggle i,
+#soundToggle i { pointer-events: none; }
+
+/* Pozíciók: a canvas szélén kívül, hogy ne takarják a HUD-ot.
+   A transform itt csak elhelyez — hoverkor NEM írjuk felül. */
+#mainMenuButton { top: 6px; left: -12px; transform: translateX(-100%); }
+#musicToggle    { top: 6px; right: -12px; transform: translateX(100%); }
+#soundToggle    { top: calc(6px + clamp(40px, 4.2vw, 52px) + 12px); right: -12px; transform: translateX(100%); }
 
 #restartButton {
   position: absolute;
@@ -194,4 +159,361 @@ body {
   justify-content: center;
   gap: 2vw;
   margin-top: 20px;
+}
+
+/* ───────────────────────────────────────────────
+   In-game HUD overlay (space téma — piros/bordó)
+   A #hud a canvas fölött fekszik, vele együtt skálázódik.
+   ─────────────────────────────────────────────── */
+
+/* A hidden attribútum mindig győzzön a display:flex/grid felett
+   (különben a strike-alert és a game over panel folyamatosan látszana). */
+[hidden] { display: none !important; }
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  font-family: 'Orbitron', sans-serif;
+  color: #fff;
+}
+
+#hud kbd {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.hud-bar {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+.hud-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #ff3b3b;
+  border-radius: 5px;
+  transition: width 0.12s linear;
+}
+
+/* Idő — bal felül */
+.hud-time { position: absolute; top: 3%; left: 2.5%; min-width: 116px; }
+.hud-time-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: clamp(1.4rem, 3.4vw, 2.6rem); font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+.hud-time-row i { font-size: 0.55em; color: rgba(255, 255, 255, 0.55); }
+.hud-time .hud-unit { font-size: 0.5em; color: rgba(255, 255, 255, 0.55); }
+
+/* Pont — jobb felül */
+.hud-score { position: absolute; top: 3%; right: 2.5%; text-align: right; }
+.hud-score-label {
+  font-size: clamp(0.7rem, 1.4vw, 0.95rem);
+  letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+.hud-score-row {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: 10px;
+  font-size: clamp(1.9rem, 4.4vw, 3.2rem); font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+.hud-plus { font-size: 0.42em; color: #ff6b6b; opacity: 0; transition: opacity 0.4s ease; }
+
+/* A pont-számláló „megrándul" növekedéskor (juice). */
+#hudScoreValue { display: inline-block; transform-origin: right center; }
+.hud-score--punch { animation: hudScorePunch 0.22s ease-out; }
+@keyframes hudScorePunch {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* Kombó-jelző (a pont alatt, jobbra) — arany pill, találatonként „popol" */
+.hud-combo {
+  display: inline-block; margin-top: 7px;
+  padding: 3px 11px 5px; border-radius: 12px;
+  background: rgba(252, 162, 17, 0.16);
+  border: 1px solid rgba(252, 162, 17, 0.65);
+  color: #ffd24a; font-weight: 700; letter-spacing: 0.08em;
+  font-size: clamp(0.72rem, 1.4vw, 0.98rem);
+  transform-origin: right center;
+  min-width: 96px; text-align: center;
+}
+.hud-combo b { font-size: 1.2em; }
+.hud-combo-text { display: block; }
+/* Fogyó sáv: a 2 mp-es kombó-ablakot mutatja (találatkor visszatöltődik). */
+.hud-combo-bar {
+  height: 4px; margin-top: 5px;
+  background: rgba(252, 162, 17, 0.2);
+  border-radius: 999px; overflow: hidden;
+}
+.hud-combo-bar-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, #ffd24a, #ff8a3b);
+  border-radius: 999px;
+  transition: width 0.1s linear;
+}
+.hud-combo--pop { animation: hudComboPop 0.22s ease-out; }
+@keyframes hudComboPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* Strike figyelmeztetés — középen felül */
+.hud-strike {
+  position: absolute; top: 3%; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(219, 29, 29, 0.18);
+  border: 1px solid rgba(255, 60, 60, 0.55);
+  color: #ffcaca; padding: 6px 16px; border-radius: 999px;
+  font-size: clamp(0.8rem, 1.7vw, 1.15rem);
+  animation: hudStrikePulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes hudStrikePulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* Frenzy-jelző — utolsó 10 mp, dupla pont (arany, hogy elüssön a piros strike-tól) */
+.hud-frenzy {
+  position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(252, 162, 17, 0.18);
+  border: 1px solid rgba(252, 162, 17, 0.7);
+  color: #ffd24a; padding: 6px 16px; border-radius: 999px;
+  font-size: clamp(0.8rem, 1.7vw, 1.15rem); font-weight: 700; letter-spacing: 0.06em;
+  white-space: nowrap;
+  animation: hudFrenzyPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes hudFrenzyPulse {
+  from { transform: translateX(-50%) scale(1);    opacity: 0.85; }
+  to   { transform: translateX(-50%) scale(1.06); opacity: 1; }
+}
+
+/* Vezérlés-tipp — visszaszámlálás alatt (a játék alján, középen) */
+.hud-controls-hint {
+  position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%);
+  background: rgba(11, 14, 27, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px; padding: 8px 16px;
+  font-size: clamp(0.8rem, 1.5vw, 1.05rem); color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+/* Powerup chipek — bal alul */
+.hud-powerups { position: absolute; bottom: 3.5%; left: 2.5%; display: flex; gap: 10px; }
+.hud-chip {
+  background: rgba(11, 14, 27, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px; padding: 8px 10px; min-width: 104px;
+}
+.hud-chip-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: clamp(0.75rem, 1.4vw, 1rem);
+}
+.hud-chip-row img { width: 1.25em; height: 1.25em; object-fit: contain; }
+/* Shield chip: kék akcent (nincs visszaszámláló sáv, mert ütközésig tart) */
+.hud-chip--shield { border-color: rgba(120, 200, 255, 0.5); }
+.hud-chip--shield .hud-chip-row { color: #aee0ff; }
+
+/* Dash chip: cián akcent; a sáv a cooldown visszatöltődését mutatja (tele = kész).
+   Kész állapotban (.is-ready) finom cián glow jelzi, hogy lehet dash-elni. */
+.hud-chip--dash { border-color: rgba(120, 220, 255, 0.5); }
+.hud-chip--dash .hud-chip-row { color: #bdecff; }
+.hud-chip--dash .hud-chip-row i { font-size: 1.1em; }
+.hud-chip--dash .hud-bar-fill { background: #38d6ff; }
+.hud-chip--dash.is-ready { border-color: rgba(56, 214, 255, 0.85); box-shadow: 0 0 10px rgba(56, 214, 255, 0.45); }
+
+/* Súgó gomb — jobb alul (a sáv FÖLÖTT marad, hogy nyitva is kattintható legyen) */
+.hud-help-btn {
+  position: absolute; bottom: 3.5%; right: 2.5%; pointer-events: auto; z-index: 7;
+  width: clamp(38px, 4vw, 50px); height: clamp(38px, 4vw, 50px);
+  border-radius: 50%; background: rgba(108, 21, 21, 0.85);
+  border: 2px solid #000; color: #fff; cursor: pointer;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  display: flex; align-items: center; justify-content: center;
+}
+.hud-help-btn:hover { background: rgb(219, 29, 29); }
+
+/* Súgó info-sáv — a játék alján, az elemek egymás mellett (a „?" gomb nyitja) */
+.hud-help-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 6;
+  pointer-events: auto; cursor: pointer;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px 18px;
+  padding: 12px 76px;
+  background: rgba(8, 10, 20, 0.9);
+  border-top: 1px solid rgba(255, 60, 60, 0.4);
+  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
+}
+.hud-help-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: rgba(255, 255, 255, 0.9); white-space: nowrap;
+}
+.hud-help-item img { width: 1.3em; height: 1.3em; object-fit: contain; }
+.hud-help-sep { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.2); }
+
+/* ── Game over panel ── */
+.game-over-panel {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4, 5, 12, 0.74);
+  font-family: 'Orbitron', sans-serif;
+}
+.go-card {
+  position: relative; overflow: hidden;
+  width: min(420px, 86%); text-align: center; color: #fff;
+  background: #0b0e1b;
+  border: 2px solid rgba(255, 40, 40, 0.6);
+  border-radius: 18px;
+  box-shadow: 0 0 40px rgba(219, 29, 29, 0.4);
+  padding: clamp(20px, 3vw, 34px);
+}
+.go-card.go-celebrate { animation: goGlow 1.6s ease-in-out infinite alternate; }
+@keyframes goGlow {
+  from { box-shadow: 0 0 40px rgba(219, 29, 29, 0.4); }
+  to   { box-shadow: 0 0 60px rgba(255, 80, 40, 0.85); }
+}
+.go-result {
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem); letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.55); text-transform: uppercase;
+}
+
+/* Új personal-best jelvény */
+.go-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 12px; padding: 5px 14px; border-radius: 999px;
+  background: rgba(252, 162, 17, 0.16);
+  border: 1px solid rgba(252, 162, 17, 0.55);
+  color: #fac775; font-size: clamp(0.78rem, 1.5vw, 1rem);
+}
+
+/* Teljesítmény-kártyák (rang + saját legjobb) */
+.go-meta { display: flex; gap: 10px; margin-top: 16px; }
+.go-meta-card {
+  flex: 1; background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px; padding: 10px;
+}
+.go-meta-label { display: block; font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.06em; }
+.go-meta-value { display: block; margin-top: 3px; font-size: clamp(1.2rem, 3vw, 1.6rem); font-weight: 700; }
+
+/* „X pts off your best" sor */
+.go-perf { margin-top: 12px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); }
+
+/* Vendég bejelentkezés-felhívás — kiemelt, felismerhető Google-gomb */
+.go-signin {
+  width: 100%; margin-top: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #ffffff; color: #1f1f1f;
+  border: none; border-radius: 10px;
+  padding: 13px; font-family: 'Orbitron', sans-serif; font-weight: 700;
+  font-size: clamp(0.8rem, 1.6vw, 0.98rem);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.go-signin:hover { background: #f3f3f3; transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(255,255,255,0.25), 0 8px 22px rgba(0,0,0,0.55); }
+.go-signin .g-logo { flex-shrink: 0; }
+
+/* Konfetti réteg */
+.go-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.go-confetti span {
+  position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px;
+  opacity: 0; animation: goConfettiFall 1.7s linear forwards;
+}
+@keyframes goConfettiFall {
+  0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(420px) rotate(540deg); opacity: 0; }
+}
+
+.go-score-label { margin-top: 14px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.55); }
+.go-score { font-size: clamp(2.6rem, 7vw, 4.2rem); font-weight: 700; line-height: 1; }
+.go-scores { margin: 18px 0; text-align: left; }
+.go-scores-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; color: #ff6b6b; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.go-scores table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.go-scores td { padding: 5px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.go-scores td:last-child { text-align: right; font-weight: 700; }
+.go-scores .gold td { color: #ffd24a; }
+.go-scores .silver td { color: #cfd4da; }
+.go-scores .bronze td { color: #e0a06a; }
+.go-btn-primary {
+  width: 100%; margin-top: 4px;
+  background: #db1d1d; color: #fff; border: none; border-radius: 10px;
+  padding: 13px; cursor: pointer; font-family: 'Orbitron', sans-serif;
+  font-size: clamp(0.95rem, 2vw, 1.15rem); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.go-btn-primary:hover { background: #ff2a2a; }
+.go-btn-row { display: flex; gap: 10px; margin-top: 10px; }
+.go-btn {
+  flex: 1; text-decoration: none; cursor: pointer;
+  background: transparent; color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 10px;
+  padding: 10px; font-size: 0.82rem;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.go-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* ── Nickname modal (játékvégi új profil) ── */
+.nick-modal {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4, 5, 12, 0.82);
+  font-family: 'Orbitron', sans-serif;
+}
+.nick-card {
+  width: min(380px, 88%); text-align: center; color: #fff;
+  background: #0b0e1b;
+  border: 2px solid rgba(255, 40, 40, 0.6);
+  border-radius: 18px;
+  box-shadow: 0 0 40px rgba(219, 29, 29, 0.45);
+  padding: clamp(20px, 3vw, 30px);
+}
+.nick-title { margin: 0; font-size: clamp(1.1rem, 2.4vw, 1.5rem); font-weight: 700; }
+.nick-sub { margin: 8px 0 0; font-size: 0.82rem; color: rgba(255, 255, 255, 0.55); }
+.nick-input {
+  width: 100%; margin-top: 18px; box-sizing: border-box;
+  padding: 12px 14px; border-radius: 10px;
+  background: #11141f; border: 1px solid rgba(255, 60, 60, 0.4);
+  color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1rem; text-align: center;
+}
+.nick-input:focus { outline: none; border-color: #ff3b3b; box-shadow: 0 0 0 2px rgba(255, 59, 59, 0.3); }
+.nick-hint { margin: 8px 0 0; font-size: 0.72rem; color: rgba(255, 255, 255, 0.4); }
+.nick-submit {
+  width: 100%; margin-top: 16px; cursor: pointer;
+  background: #db1d1d; color: #fff; border: none; border-radius: 10px;
+  padding: 12px; font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
+}
+.nick-submit:hover { background: #ff2a2a; }
+.nick-submit:disabled { opacity: 0.6; cursor: default; }
+.nick-error { margin: 10px 0 0; font-size: 0.8rem; color: #ff8a8a; }
+
+/* ── Csökkentett mozgás (prefers-reduced-motion) ── */
+@media (prefers-reduced-motion: reduce) {
+  .hud-strike,
+  .hud-frenzy,
+  .hud-combo--pop,
+  .hud-score--punch,
+  .go-card.go-celebrate { animation: none !important; }
+  .go-confetti { display: none !important; }
+  .hud-combo-bar-fill,
+  .hud-bar-fill,
+  .hud-plus,
+  .hud-help-btn,
+  #mainMenuButton,
+  #musicToggle,
+  #soundToggle,
+  .go-btn-primary,
+  .go-btn,
+  .go-signin { transition: none !important; }
 }

@@ -1,0 +1,62 @@
+{
+  "rules": {
+    "scores": {
+      ".read": true,
+      ".indexOn": ["score"],
+      "$scoreId": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['score', 'name']) && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 25000 && newData.child('score').val() % 1 === 0 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 16 && (!newData.hasChild('uid') || (auth != null && newData.child('uid').isString() && newData.child('uid').val() === auth.uid))",
+        "score": { ".validate": true },
+        "name": { ".validate": true },
+        "uid": { ".validate": true },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "username": {
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 16"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "stats": {
+          "totalGames": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "bestScore":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "totalScore": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "$other": { ".validate": false }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "usernames": {
+      ".read": true,
+      "$username": {
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid)",
+        ".validate": "newData.isString() && newData.val() === auth.uid && $username.length >= 3 && $username.length <= 16 && $username.matches(/^[a-z0-9_]+$/)"
+      }
+    },
+
+    "lobbies": {
+      ".read": true,
+      ".write": true
+    },
+
+    "mpScores": {
+      ".read": true,
+      ".indexOn": ["score"],
+      "$scoreId": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['score', 'name']) && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 25000 && newData.child('score').val() % 1 === 0 && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 40",
+        "score": { ".validate": true },
+        "name": { ".validate": true },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

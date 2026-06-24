@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Google tag (gtag.js) -->
+  <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-VXS8Z5LP0X"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -9,186 +9,345 @@
     gtag('js', new Date());
     gtag('config', 'G-VXS8Z5LP0X');
   </script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta property="og:title" content="Zsasteroids" />
+  <meta property="og:description" content="Fast-paced asteroids game with multiple themes. Beat the high score!" />
+  <meta property="og:image" content="/assets/images/zsasteroids_icon_no_bg.png" />
+
   <title>Zsasteroids</title>
   <link rel="stylesheet" href="new_design.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="icon" type="image/png" href="/assets/images/zsasteroids_icon_no_bg.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
 
-    <!-- Hotjar Tracking Code for https://www.zsasteroids.com/ -->
+  <!-- Hotjar -->
   <script>
     (function(h,o,t,j,a,r){
-        h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
-        h._hjSettings={hjid:6496141,hjsv:6};
-        a=o.getElementsByTagName('head')[0];
-        r=o.createElement('script');r.async=1;
-        r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
-        a.appendChild(r);
+      h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+      h._hjSettings={hjid:6496141,hjsv:6};
+      a=o.getElementsByTagName('head')[0];
+      r=o.createElement('script');r.async=1;
+      r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+      a.appendChild(r);
     })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
   </script>
 </head>
 <body>
-  <div class="main-container">
-    <div class="container" id="video-container">
-      <h1 class="zsasteroids">ZSASTEROIDS</h1>
-      <div class="video-wrapper">
-      <video id="background-video" autoplay muted></video>
+
+  <!-- ── AUTH BAR ── -->
+  <nav class="auth-bar" id="authBar">
+    <!-- Logged in: pill link to profile page -->
+    <a class="auth-user-link" id="authUserLink" href="/profile.html" hidden>
+      <span class="auth-display-name" id="authDisplayName"></span>
+      <div class="auth-avatar-circle">
+        <img class="auth-avatar" id="authAvatar" src="" alt="" />
+        <span class="auth-avatar-fallback" id="authAvatarFallback" hidden>
+          <i class="fas fa-user"></i>
+        </span>
       </div>
-    </div>
-
-    <div class="container" id="score-section">
-      <div class="title-row">
-        <img src="/assets/images/zsasteroids_icon_no_bg.png" alt="Left Icon" class="left-image" />
-        <h2 class="top20Scores">Top 20 High Scores</h2>
-        <img src="/assets/images/zsasteroids_icon_no_bg.png" alt="Right Icon" class="right-image" />
-      </div>
-      <div id="score-container">
-        <div id="first-column">
-          <table class="score-table">
-            <thead>
-              <tr><th>Rank</th><th>Score</th></tr>
-            </thead>
-            <tbody id="score-col-1"></tbody>
-          </table>
-          <div id="total-games" class="total-info">Loading total games played...</div>
-        </div>
-        <div id="second-column">
-          <table class="score-table">
-            <thead>
-              <tr><th>Rank</th><th>Score</th></tr>
-            </thead>
-            <tbody id="score-col-2"></tbody>
-          </table>
-          <div id="total-scores" class="total-info">Loading total scores...</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="container music-container">
-      <audio id="background-music" src="/assets/audio/main-theme.mp3" preload="auto" loop></audio>
-      <div class="music-button-wrapper">
-        <button class="music-toggle music-button">
-          <i class="fas fa-play"></i>
-        </button>
-
-        <span class="music-label">Music</span>
-        <button class="music-toggle music-button">
-          <i class="fas fa-play"></i>
-        </button>
-      
-        <span class="music-label">Music</span>
-        <button class="music-toggle music-button">
-          <i class="fas fa-play"></i>
-        </button>
-
-        <span class="music-label">Music</span>
-        <button class="music-toggle music-button">
-          <i class="fas fa-play"></i>
-        </button>
-
-        <span class="music-label">Music</span>
-        <button class="music-toggle music-button">
-          <i class="fas fa-play"></i>
-        </button>
-      </div>
-    </div>
-    
-    <script type="module" src="/js/music_toggle.js"></script>
-    
-
-    <div class= "container theme-container">
-      <div class="theme-selection">
-        <div class="theme-header">
-          <span class="theme-label">Choose a theme to play:</span>
-        </div>
-        <div class="theme-buttons">
-          <button class="theme-button space-button delayed-button" data-href='themes/space/space.html?theme=space'>🚀 Space</button>
-          <button class="theme-button ocean-button delayed-button" data-href='themes/ocean/ocean.html?theme=ocean'>🌊 Ocean</button>
-          <button class="theme-button jungle-button delayed-button" data-href='themes/jungle/jungle.html?theme=jungle'>🐒 Jungle</button>
-          <button class="theme-button ww2-button delayed-button" data-href='themes/ww2/ww2.html?theme=ww2'>💣 World War II</button>
-          <button class="theme-button city-button delayed-button" data-href='themes/city/city.html?theme=city'>🌆 City</button>
-        </div>
-        <script type="module" src="/js/click_sound_delayed.js"></script>
-      </div>
-    </div>
-    <div class="container" id="info-box">
-      <h2>Game Instructions</h2>
-      <h3>Welcome to Zsasteroids!</h3>
-
-      <p>In this game, you have <strong>1 minute</strong> to score as many points as you can — and if you are good enough, you might make it into the <strong>Top 20</strong>.</p>
-
-      <p>The smaller the object you hit (asteroid, mine, etc.), the more points you earn. The first power-up appears <strong>5 seconds</strong> after the game starts, and then every <strong>15 seconds</strong> after that.</p>
-
-      <p><strong style="color: red;">--------------------</strong></p>
-
-      <p><strong style="color: red;">New update: </strong></p>
-
-      <p>The <strong style="color: red;">Strike</strong> goes across the game area in just <strong>1 second</strong> – it might come from the <strong>left</strong> or the <strong>right</strong>, but it always blasts straight through the <strong>center of the screen</strong>!</p>
-
-      <p>Hit the Strike and you'll earn <strong>+200 points</strong>. But watch out – if it hits you, it's <strong>game over</strong>!</p>
-
-      <p><strong style="color: red;">--------------------</strong></p>
-    
-      <p>Pick up a power-up to gain <strong>double movement and attack speed</strong> for <strong>8 seconds</strong> — keep an eye <strong>on the top-left corner</strong> to see how much boost time is left.</p>
-
-      <p>If you pick up a <strong>multishot power-up</strong>, your ship will fire <strong>3 bullets at once</strong>. The multishot effect also lasts for <strong>8 seconds</strong>.</p>
-      
-      <p>The first multishot power-up spawns <strong>10 seconds</strong> after the game starts, and then every <strong>20 seconds</strong> after that.</p>
-          
-      <p>The game ends when you <strong>collide with an object</strong> or <strong>run out of time.</strong>.</p>
-
-      <p>If your final score puts you in the <strong>Top 5</strong>, you will get to enter your nickname (max 8 characters) — it will appear on the <strong>Top 20 scoreboard</strong>.</p>
-    
-      <p><strong>Good luck!</strong></p>
-
-    </div>
-
-    <div class="container" id="social-box">
-      <h2 class="socialmedia">SOCIAL MEDIA</h2>
-      <div class="social-buttons">
-      <button class="tiktok-button" onclick="window.open('https://www.tiktok.com/@zsasteroids', '_blank')">
-        <i class="fab fa-tiktok"></i> TikTok
+    </a>
+    <!-- Logged out: icon with dropdown -->
+    <div class="auth-guest" id="authGuest">
+      <button class="auth-profile-btn" id="authProfileBtn" aria-label="Sign in">
+        <span class="auth-avatar-guest"><i class="fas fa-user"></i></span>
       </button>
-      <button class="youtube-button" onclick="window.open('https://www.youtube.com/@zsasteroids', '_blank')">
-        <i class="fab fa-youtube"></i> YouTube
+      <div class="auth-dropdown" id="authDropdown" hidden>
+        <button class="btn-auth-option" id="signUpBtn">
+          <i class="fab fa-google"></i> Sign Up
+        </button>
+        <div class="auth-divider"></div>
+        <button class="btn-auth-option" id="logInBtn">
+          <i class="fab fa-google"></i> Log In
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flying background animation -->
+  <div class="background-container"></div>
+
+  <!-- ── HERO ── -->
+  <header class="hero">
+    <h1 class="hero-title">ZSASTEROIDS</h1>
+    <div class="hero-buttons">
+      <button class="btn-primary" id="soloPlayBtn">
+        <i class="fas fa-play"></i> Solo Play
+      </button>
+      <button class="btn-secondary" id="coopBtn">
+        <i class="fas fa-bolt"></i> Co-op
+        <span class="badge">Soon</span>
       </button>
     </div>
+    <a class="scroll-indicator" href="#scoreboard-section" aria-label="Scroll down">
+      <i class="fas fa-chevron-down"></i>
+    </a>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <!-- Scoreboard: Single Player -->
+    <section class="section" id="scoreboard-section">
+      <h2 class="section-title"><i class="fas fa-trophy"></i> Top Scores — Single Player</h2>
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="scores-body">
+          <tr class="score-loading">
+            <td colspan="3">Loading scores...</td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn-ghost" id="view-all-btn" hidden>
+        View all 20 scores <i class="fas fa-chevron-down" id="view-all-icon"></i>
+      </button>
+      <div class="score-stats">
+        <span id="total-games">—</span>
+        <span class="stats-divider">·</span>
+        <span id="total-scores">—</span>
+      </div>
+    </section>
+
+    <!-- Scoreboard: Multiplayer (co-op) -->
+    <section class="section" id="mp-scoreboard-section">
+      <h2 class="section-title"><i class="fas fa-trophy"></i> Top Scores — Multiplayer</h2>
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Players</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="mp-scores-body">
+          <tr class="score-loading">
+            <td colspan="3">Loading scores...</td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn-ghost" id="mp-view-all-btn" hidden>
+        View all 20 scores <i class="fas fa-chevron-down" id="mp-view-all-icon"></i>
+      </button>
+      <div class="score-stats">
+        <span id="mp-total-games">—</span>
+        <span class="stats-divider">·</span>
+        <span id="mp-total-scores">—</span>
+      </div>
+    </section>
+
+    <!-- How to Play -->
+    <section class="section" id="how-to-play-section">
+      <button class="collapsible-trigger" id="howToPlayBtn" aria-expanded="false">
+        <span class="section-title" style="margin:0">How to Play</span>
+        <i class="fas fa-plus expand-icon" id="howToPlayIcon"></i>
+      </button>
+      <div class="collapsible-content" id="howToPlayContent">
+        <p>You have <strong>1 minute</strong> to score as high as you can. The <strong>smaller</strong> the rock you blast, the more points it's worth. Land in the <strong>Top 20</strong> to save your score.</p>
+
+        <h3 class="htp-subhead">Controls</h3>
+        <div class="controls-grid">
+          <div class="control-item"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move</span></div>
+          <div class="control-item"><kbd>Shift</kbd><span>Dash — dodge through rocks</span></div>
+          <div class="control-item"><kbd>Space</kbd><span>Shoot</span></div>
+          <div class="control-item"><kbd>M</kbd><span>Music on/off</span></div>
+          <div class="control-item"><kbd>N</kbd><span>Sound FX on/off</span></div>
+        </div>
+
+        <h3 class="htp-subhead">Power-ups</h3>
+        <div class="htp-grid">
+          <div class="htp-card">
+            <img src="themes/space/boost.png" alt="Boost" loading="lazy" />
+            <strong>Boost</strong>
+            <span>2× speed &amp; fire rate, 8s</span>
+          </div>
+          <div class="htp-card">
+            <img src="themes/space/multishot.png" alt="Multishot" loading="lazy" />
+            <strong>Multishot</strong>
+            <span>Fires 3 shots at once, 8s</span>
+          </div>
+          <div class="htp-card">
+            <img src="themes/space/shield.png" alt="Shield" loading="lazy" />
+            <strong>Shield</strong>
+            <span>Survive one hit</span>
+          </div>
+        </div>
+
+        <h3 class="htp-subhead">Watch out for</h3>
+        <div class="htp-grid">
+          <div class="htp-card htp-card--warn">
+            <img src="themes/space/strike.png" alt="Strike" loading="lazy" />
+            <strong>Strike</strong>
+            <span>Shoot it for +200 — if it hits you, game over</span>
+          </div>
+          <div class="htp-card htp-card--warn">
+            <img src="themes/space/asteroid_explosive.png" alt="Explosive asteroid" loading="lazy" />
+            <strong>Explosive</strong>
+            <span>Blows up nearby rocks in a chain</span>
+          </div>
+          <div class="htp-card htp-card--warn">
+            <img src="themes/space/hunter.png" alt="Hunter" loading="lazy" />
+            <strong>Hunter</strong>
+            <span>Hunts you down — 3 hits to kill it, +50</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── MODAL: Solo Play — Theme Selector ── -->
+  <div class="modal-overlay" id="soloModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="soloModalTitle">
+      <button class="modal-close" data-close="soloModal" aria-label="Close"><i class="fas fa-times"></i></button>
+      <h2 class="modal-title" id="soloModalTitle">Choose a Theme</h2>
+      <div class="theme-grid">
+        <a class="theme-card" href="themes/space/space.html?theme=space">
+          <img src="themes/space/background.jpg" alt="Space" loading="lazy" />
+          <span class="theme-card-label">🚀 Space</span>
+        </a>
+        <div class="theme-card theme-card--soon" aria-disabled="true">
+          <img src="themes/ocean/background.jpg" alt="Ocean" loading="lazy" />
+          <span class="theme-soon-badge">Coming soon</span>
+          <span class="theme-card-label">🌊 Ocean</span>
+        </div>
+        <div class="theme-card theme-card--soon" aria-disabled="true">
+          <img src="themes/jungle/background.jpg" alt="Jungle" loading="lazy" />
+          <span class="theme-soon-badge">Coming soon</span>
+          <span class="theme-card-label">🐒 Jungle</span>
+        </div>
+        <div class="theme-card theme-card--soon" aria-disabled="true">
+          <img src="themes/ww2/background.jpg" alt="World War II" loading="lazy" />
+          <span class="theme-soon-badge">Coming soon</span>
+          <span class="theme-card-label">💣 WW2</span>
+        </div>
+        <div class="theme-card theme-card--soon" aria-disabled="true">
+          <img src="themes/city/background.jpg" alt="City" loading="lazy" />
+          <span class="theme-soon-badge">Coming soon</span>
+          <span class="theme-card-label">🌆 City</span>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="background-container"></div>
+
+  <!-- ── MODAL: Co-op ── -->
+  <div class="modal-overlay" id="coopModal" hidden>
+    <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="coopModalTitle">
+      <button class="modal-close" data-close="coopModal" aria-label="Close"><i class="fas fa-times"></i></button>
+
+      <!-- Screen 1: Create or Join -->
+      <div class="coop-screen" id="coopScreen1">
+        <h2 class="modal-title" id="coopModalTitle">Co-op Mode</h2>
+        <p class="modal-subtitle">Play together with a friend</p>
+        <div class="coop-options">
+          <button class="btn-coop-option" id="createLobbyBtn">
+            <i class="fas fa-plus-circle"></i>
+            <span>Create Lobby</span>
+          </button>
+          <button class="btn-coop-option" id="joinLobbyBtn">
+            <i class="fas fa-sign-in-alt"></i>
+            <span>Join Lobby</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Screen 2a: Theme select (Create path) -->
+      <div class="coop-screen" id="coopScreen2Create" hidden>
+        <button class="modal-back" id="backFromCreate"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2 class="modal-title">Choose a Theme</h2>
+        <div class="theme-grid theme-grid--compact">
+          <button class="theme-card theme-card--btn" data-theme="space">
+            <img src="themes/space/background.jpg" alt="Space" loading="lazy" />
+            <span class="theme-card-label">🚀 Space</span>
+          </button>
+          <div class="theme-card theme-card--soon" aria-disabled="true">
+            <img src="themes/ocean/background.jpg" alt="Ocean" loading="lazy" />
+            <span class="theme-soon-badge">Coming soon</span>
+            <span class="theme-card-label">🌊 Ocean</span>
+          </div>
+          <div class="theme-card theme-card--soon" aria-disabled="true">
+            <img src="themes/jungle/background.jpg" alt="Jungle" loading="lazy" />
+            <span class="theme-soon-badge">Coming soon</span>
+            <span class="theme-card-label">🐒 Jungle</span>
+          </div>
+          <div class="theme-card theme-card--soon" aria-disabled="true">
+            <img src="themes/ww2/background.jpg" alt="WW2" loading="lazy" />
+            <span class="theme-soon-badge">Coming soon</span>
+            <span class="theme-card-label">💣 WW2</span>
+          </div>
+          <div class="theme-card theme-card--soon" aria-disabled="true">
+            <img src="themes/city/background.jpg" alt="City" loading="lazy" />
+            <span class="theme-soon-badge">Coming soon</span>
+            <span class="theme-card-label">🌆 City</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 2b: Join with code -->
+      <div class="coop-screen" id="coopScreen2Join" hidden>
+        <button class="modal-back" id="backFromJoin"><i class="fas fa-arrow-left"></i> Back</button>
+        <h2 class="modal-title">Join Lobby</h2>
+        <p class="modal-subtitle">Enter the 4-digit room code</p>
+        <div class="code-input-group">
+          <input type="text" id="roomCodeInput" maxlength="4" placeholder="CODE"
+                 class="code-input" autocomplete="off" spellcheck="false" />
+          <button class="btn-primary" id="joinRoomBtn">Join</button>
+        </div>
+        <p class="code-error" id="joinError" hidden>Room not found. Check the code and try again.</p>
+      </div>
+
+      <!-- Screen 3: Waiting room -->
+      <div class="coop-screen" id="coopScreen3Waiting" hidden>
+        <h2 class="modal-title">Waiting for Player 2</h2>
+        <p class="modal-subtitle">Share this code with your friend</p>
+        <div class="room-code-display" id="roomCodeDisplay">—</div>
+        <p class="modal-subtitle" id="roomThemeDisplay"></p>
+        <div class="waiting-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <button class="btn-ghost" id="cancelLobbyBtn">Cancel</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── MODAL: Username Picker (no close — must pick a username) ── -->
+  <div class="modal-overlay" id="usernameModal" hidden data-persistent>
+    <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="usernameModalTitle">
+      <h2 class="modal-title" id="usernameModalTitle">Choose a Username</h2>
+      <p class="modal-subtitle">Shown on the scoreboard and to friends</p>
+      <div class="username-input-group">
+        <input type="text" id="usernameInput" maxlength="16" placeholder="your_username"
+               class="username-input" autocomplete="off" spellcheck="false" />
+        <p class="username-hint">3–16 characters · letters, numbers and underscores only</p>
+        <button class="btn-primary" id="usernameSubmitBtn" style="width:100%">Confirm</button>
+      </div>
+      <p class="code-error" id="usernameError" hidden></p>
+    </div>
+  </div>
+
+  <!-- Mobile notice -->
+  <div class="mobile-notice" id="mobileNotice">
+    <i class="fas fa-keyboard"></i>
+    <span>Best played on desktop with a keyboard</span>
+    <button onclick="document.getElementById('mobileNotice').remove()" aria-label="Dismiss">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <!-- Scripts -->
   <script src="/js/flying_background.js"></script>
-  <script type="module" src="/js/main_supabase.js"></script>
-  <script>
-    const videoSources = [
-      "/assets/videos/jungle.mp4",
-      "/assets/videos/ww2.mp4",
-      "/assets/videos/ocean.mp4",
-      "/assets/videos/city.mp4",
-      "/assets/videos/space.mp4"
-    ];
-  
-    const videoElement = document.getElementById('background-video');
-  
-    function getRandomVideoSrc(excludeSrc) {
-      let filtered = videoSources.filter(src => src !== excludeSrc);
-      let randomIndex = Math.floor(Math.random() * filtered.length);
-      return filtered[randomIndex];
-    }
-  
-    function playNextVideo(currentSrc) {
-      let nextSrc = getRandomVideoSrc(currentSrc);
-      videoElement.src = nextSrc;
-      videoElement.play();
-    }
-  
-    videoElement.addEventListener('ended', () => {
-      playNextVideo(videoElement.src);
-    });
-  
-    playNextVideo("");
-  </script>
-  <script type="module" src="/js/click_sound.js"></script>
+  <script src="/js/click_sound.js"></script>
+  <script type="module" src="/js/main_firebase.js"></script>
+  <script type="module" src="/js/mp_firebase.js"></script>
+  <script type="module" src="/js/index.js"></script>
+
 </body>
 </html>

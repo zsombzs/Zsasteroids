@@ -23,25 +23,12 @@
         <button class="delayed-button" id="mainMenuButton" data-href='/index.html'>↩︎</button>
         <button id="musicToggle"><i class="fas fa-music"></i></button>
         <button id="soundToggle"><i class="fas fa-volume-high"></i></button>
-        <button id="soundVariantToggle">B&Á: ON</button>
         <script type="module" src="/js/click_sound_delayed.js"></script>
         <canvas id="gameCanvas" width="1920" height="1080" style="image-rendering: pixelated;"></canvas>
     </div>
     <button id="restartButton" style="display: none;">RESTART</button>
     <script src="/js/global.js"></script>
     <script type="module" src="/js/main.js"></script>
-
-    <div id="nameModal" style="display:none;" class="modal">
-        <div class="modal-content">
-          <label for="playerNameInput">Congratulations!<br>You're in the top 5!<br>Please provide your name (optional)</label>
-          <input type="text" id="playerNameInput" maxlength="8" />
-          <small id="charLimitInfo">You can enter up to 8 characters</small><br/>
-            <div class="buttons">
-                <button id="cancelNameButton">Cancel</button>
-                <button id="submitNameButton">Submit</button>
-            </div>
-        </div>
-    </div> 
     <script type="module" src="/js/click_sound.js"></script> 
     <audio id="background-music" preload="auto" loop></audio>
     <script type="module" src="/js/themes_background_music.js"></script>

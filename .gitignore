@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets (soha ne kerüljön a repóba)
+.env
+.env.*
+*.local
+serviceAccountKey.json
+firebase-adminsdk*.json
+*.pem
+*.key
+
+# OS-specifikus szemét
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# Szerkesztő / IDE
+.vscode/
+.idea/
+*.swp
+
+# Logok
+*.log
+npm-debug.log*
+
+# Régi / archív
+old design/
+
+# Belső tervezési / fejlesztői dokumentumok (nem része a publikált projektnek).
+# Minden gyökér-szintű .md-t kihagyunk, KIVÉVE a README.md-t.
+/*.md
+!/README.md
+
+# Korábbi Supabase-prototípus maradékai (a projekt Firebase-re állt át)
+js/main_supabase.js
+js/supabase.js

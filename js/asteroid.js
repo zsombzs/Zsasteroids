@@ -4,17 +4,23 @@ import { Player } from "./player.js"
 import { theme } from "./main.js"
 
 class Asteroid extends CircleShape {
-    constructor(x, y, radius, updatable, drawable, asteroids) {
+    constructor(x, y, radius, updatable, drawable, asteroids, type = 'normal') {
         super(x, y, radius, undefined, { x: -3, y: 0 });
 
         this.updatable = updatable;
         this.drawable = drawable;
         this.asteroids = asteroids;
 
-        this.rotation = Math.random() * Math.PI * 2; 
+        // Típus (csak space): 'normal' | 'explosive'. A robbanó kő nem hasad, hanem
+        // láncreakciót indít (a logika a main.js detonateExplosive-ben él).
+        this.type = type;
+        this.dead = false;   // a láncreakció után ne dolgozzuk fel/öljük újra
+
+        this.rotation = Math.random() * Math.PI * 2;
 
         this.image = new Image();
-        this.image.src = `/themes/${theme}/asteroid.png`;
+        const file = type === 'explosive' ? 'asteroid_explosive' : 'asteroid';
+        this.image.src = `/themes/${theme}/${file}.png`;
         this.image.onload = () => {
             this.image.width = radius * 2;
             this.image.height = radius * 2;
@@ -45,7 +51,15 @@ class Asteroid extends CircleShape {
 
         ctx.translate(drawX, drawY);
         ctx.rotate(this.rotation);
-        
+
+        // Robbanó kő: lüktető vörös ragyogás, hogy egyértelmű legyen „lődd meg a
+        // láncért" (csak space). Tisztán rajzolt, az asset fölé.
+        if (this.type === 'explosive' && theme === 'space') {
+            const p = 0.6 + 0.4 * Math.sin(Date.now() / 160);
+            ctx.shadowColor = `rgba(255, 90, 40, ${0.7 * p})`;
+            ctx.shadowBlur = 24 * p;
+        }
+
         ctx.drawImage(
             this.image,
             -drawSize / 2,
@@ -107,7 +121,7 @@ class Asteroid extends CircleShape {
     
             let angle = Math.random() * 360;
             let rad = angle * Math.PI / 180;
-            let speed = Math.random() * 105 + 50;
+            let speed = Math.random() * 100 + 110;   // 110–210: a szétlőtt kis darabok is pörögnek
             newAsteroid.velocity = {
                 x: Math.cos(rad) * speed,
                 y: Math.sin(rad) * speed
@@ -124,6 +138,7 @@ class Asteroid extends CircleShape {
     }
 
     kill() {
+        this.dead = true;   // a collision-loop és a láncreakció ezt nézi (ne kétszerezzünk)
         const indexUpdatable = this.updatable.indexOf(this);
         if (indexUpdatable > -1) this.updatable.splice(indexUpdatable, 1);
     

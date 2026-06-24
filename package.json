@@ -1,15 +1,21 @@
 {
-  "name": "asteroids_game_js",
+  "name": "zsasteroids",
   "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
+  "private": true,
+  "description": "Browser-based Asteroids game (vanilla JS + HTML5 Canvas) with Firebase auth, profiles and a global leaderboard. Live: https://zsasteroids.com",
+  "homepage": "https://zsasteroids.com",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npx --yes serve .",
+    "test": "echo \"No tests specified\" && exit 0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "svelte": "^5.28.2"
-  }
+  "keywords": [
+    "game",
+    "asteroids",
+    "html5-canvas",
+    "vanilla-js",
+    "firebase"
+  ],
+  "author": "zsombzs",
+  "license": "UNLICENSED"
 }

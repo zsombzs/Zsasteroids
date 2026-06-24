@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VXS8Z5LP0X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-VXS8Z5LP0X');
+  </script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile — Zsasteroids</title>
+  <link rel="stylesheet" href="/new_design.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="icon" type="image/png" href="/assets/images/zsasteroids_icon_no_bg.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Flying background animation -->
+  <div class="background-container"></div>
+
+  <!-- Back button -->
+  <nav class="top-nav">
+    <a class="btn-back" href="/index.html">
+      <i class="fas fa-arrow-left"></i> Back
+    </a>
+  </nav>
+
+  <div class="profile-page">
+    <div class="profile-content">
+
+      <!-- Loading skeleton -->
+      <div class="profile-skeleton" id="profileSkeleton">
+        <div class="skeleton-circle"></div>
+        <div class="skeleton-line skeleton-line--wide"></div>
+        <div class="skeleton-line skeleton-line--narrow"></div>
+      </div>
+
+      <!-- Profile content -->
+      <div id="profileContentWrap" hidden>
+
+        <div class="profile-header">
+          <div class="profile-avatar-wrap">
+            <img class="profile-avatar-img" id="profileAvatarImg" src="" alt="Avatar" hidden />
+            <span class="profile-avatar-icon" id="profileAvatarIcon">
+              <i class="fas fa-user"></i>
+            </span>
+          </div>
+          <h1 class="profile-username" id="profileUsername"></h1>
+          <p class="profile-email" id="profileEmail"></p>
+        </div>
+
+        <div class="profile-stats">
+          <div class="stat-card">
+            <span class="stat-value" id="statGames">0</span>
+            <span class="stat-label">Games Played</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statBest">0</span>
+            <span class="stat-label">Best Score</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statTotal">0</span>
+            <span class="stat-label">Total Score</span>
+          </div>
+        </div>
+
+        <div class="profile-top-scores">
+          <h2 class="section-title"><i class="fas fa-trophy"></i> Your Top 3 Scores</h2>
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="personalScoresBody">
+              <tr class="score-loading">
+                <td colspan="2">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="profile-actions">
+          <button class="btn-signout-full" id="signOutBtn">
+            <i class="fas fa-sign-out-alt"></i> Sign Out
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/flying_background.js"></script>
+  <script type="module" src="/js/profile.js"></script>
+
+</body>
+</html>
