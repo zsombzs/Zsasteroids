@@ -14,6 +14,8 @@ import { CircleShape } from './circleshape.js';
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from './constants.js';
 import { theme } from './main.js';
 import { playSound, getSoundVariant } from './soundManager.js';
+import { getImage } from './imageCache.js';
+import { isLowQuality } from './effects.js';
 
 const HUNTER_SPEED = 150;                       // px/s (a hajó 290 → lehagyható)
 const HUNTER_TURN_RATE = 140 * Math.PI / 180;   // rad/s — a célra fordulás üteme
@@ -66,8 +68,7 @@ class Hunter extends CircleShape {
         // Kezdő irány a játékos felé.
         this.heading = Math.atan2(player.position.y - startY, player.position.x - startX);
 
-        this.image = new Image();
-        this.image.src = `/themes/${theme}/hunter.png`;
+        this.image = getImage(`/themes/${theme}/hunter.png`);
 
         this.updatable.push(this);
         this.drawable.push(this);
@@ -206,8 +207,7 @@ class Hunter extends CircleShape {
         for (const p of this.projectiles) {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-            ctx.shadowColor = 'rgba(255, 90, 40, 0.9)';
-            ctx.shadowBlur = 14;
+            if (!isLowQuality()) { ctx.shadowColor = 'rgba(255, 90, 40, 0.9)'; ctx.shadowBlur = 14; }
             ctx.fillStyle = '#ff7a3a';
             ctx.beginPath();
             ctx.arc(p.x, p.y, ENEMY_SHOT_R, 0, Math.PI * 2);
@@ -223,8 +223,10 @@ class Hunter extends CircleShape {
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(this.heading + Math.PI / 2);   // a sprite orra felfelé néz → a heading felé fordul
-        ctx.shadowColor = `rgba(255, 70, 40, ${0.6 + 0.3 * glow})`;
-        ctx.shadowBlur = 18 + 8 * glow;
+        if (!isLowQuality()) {
+            ctx.shadowColor = `rgba(255, 70, 40, ${0.6 + 0.3 * glow})`;
+            ctx.shadowBlur = 18 + 8 * glow;
+        }
 
         if (this.image.complete && this.image.naturalWidth) {
             ctx.drawImage(this.image, -ds / 2, -ds / 2, ds, ds);

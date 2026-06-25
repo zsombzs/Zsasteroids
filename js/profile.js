@@ -1,6 +1,11 @@
 import { initAuth, signOutUser } from '/js/auth.js';
 import { db, ref, get } from '/js/firebase.js';
 
+// Service Worker: offline / gyenge-net cache (lásd /sw.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
 function renderProfile(user, profile) {
   const avatarImg = document.getElementById('profileAvatarImg');
   const avatarIcon = document.getElementById('profileAvatarIcon');

@@ -19,6 +19,32 @@ const REDUCE_MOTION = typeof window !== 'undefined'
 // ne villantson fekete csíkot a képernyő szélén (lásd main.js háttér-rajz).
 export const SHAKE_OVERSCAN = 20;
 
+// ── Auto-quality ────────────────────────────────────────────────────────────
+// Gyengébb gépen/mobilon a shadowBlur (a legdrágább canvas-művelet) és a sok
+// részecske viszi az FPS-t. Ha az FPS tartósan beesik, „low" módba váltunk:
+// kikapcsoljuk a glow-t és felezzük a részecskeszámot. Hiszterézissel állunk
+// vissza, hogy ne villogjon a minőség.
+let lowQuality = false;
+let _qLast = 0;
+let _qFrames = 0;
+
+export function isLowQuality() { return lowQuality; }
+
+export function tickQuality() {
+    const now = (typeof performance !== 'undefined' && performance.now)
+        ? performance.now() : Date.now();
+    if (!_qLast) { _qLast = now; return; }
+    _qFrames++;
+    const elapsed = now - _qLast;
+    if (elapsed >= 1000) {
+        const fps = (_qFrames * 1000) / elapsed;
+        if (!lowQuality && fps < 40) lowQuality = true;
+        else if (lowQuality && fps > 52) lowQuality = false;
+        _qFrames = 0;
+        _qLast = now;
+    }
+}
+
 // ── Screen shake ───────────────────────────────────────────────────────────
 let _shake = { intensity: 0, start: 0, duration: 1 };
 
@@ -57,6 +83,7 @@ let particles = [];
 // x,y: kibocsátás középpontja; color: szilánk szín; count: darabszám.
 // opts: { speedMin, speedMax, sizeMin, sizeMax, lifeMin, lifeMax, drag }
 export function spawnExplosion(x, y, color = '#cdbfae', count = 10, opts = {}) {
+    if (lowQuality) count = Math.ceil(count / 2);   // gyenge gépen kevesebb szilánk
     const speedMin = opts.speedMin ?? 80;
     const speedMax = opts.speedMax ?? 280;
     const sizeMin  = opts.sizeMin  ?? 2;
@@ -134,8 +161,7 @@ export function drawEffects(ctx) {
         ctx.save();
         ctx.globalAlpha = a;
         ctx.strokeStyle = s.color;
-        ctx.shadowColor = s.color;
-        ctx.shadowBlur = 14;
+        if (!lowQuality) { ctx.shadowColor = s.color; ctx.shadowBlur = 14; }
         ctx.lineWidth = 1 + 6 * (1 - age);
         ctx.beginPath();
         ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
@@ -163,8 +189,7 @@ export function drawEffects(ctx) {
         ctx.translate(m.x, m.y);
         ctx.rotate(m.rot * Math.PI / 180);
         ctx.globalAlpha = a;
-        ctx.shadowColor = m.color;
-        ctx.shadowBlur = 16;
+        if (!lowQuality) { ctx.shadowColor = m.color; ctx.shadowBlur = 16; }
         ctx.fillStyle = m.color;
         ctx.beginPath();                       // kifelé nyúló láng
         ctx.moveTo(0, -4 - 16 * a);

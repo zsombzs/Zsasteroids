@@ -49,19 +49,77 @@ import { Strike } from '/js/strike.js';
 import { Hunter } from '/js/hunter.js';
 
 import { toggleMuted, getMuted } from './soundManager.js';
-import { playSound, toggleSoundVariant, getSoundVariant } from './soundManager.js';
+import { playSound, toggleSoundVariant, getSoundVariant, preloadSounds } from './soundManager.js';
+
+// Játék-hangok előtöltése induláskor: így gyenge neten az első megszólalás
+// (lövés, robbanás, powerup, strike) sem akad meg — a fájlok a cache-ből jönnek.
+preloadSounds([
+    '/assets/audio/shoot.mp3',
+    '/assets/audio/explosion.mp3',
+    '/assets/audio/hit.mp3',
+    '/assets/audio/start.mp3',
+    '/assets/audio/countdown.mp3',
+    '/assets/audio/gameover.mp3',
+    '/assets/audio/powerup_spawned.mp3',
+    '/assets/audio/powerup_activated.mp3',
+    '/assets/audio/strike_alarm.mp3',
+    '/assets/audio/strike_whoosh.mp3',
+    '/assets/audio/strike_earned.mp3',
+    '/assets/audio/shield_gone.mp3',
+    '/assets/audio/hunter_shot.mp3',
+    // hang-variáns ("adibodizs") effektek — szintén előre dekódolva
+    '/assets/audio/adi_death.mp3',
+    '/assets/audio/adi_good.mp3',
+]);
+
+// ── Sprite-ok előtöltése + betöltő-kapu ──
+// A 3-2-1 visszaszámlálás csak akkor indul, ha a sprite-ok és a háttér betöltöttek
+// → nincs „beugrás" és menet közbeni hitch. A hangok közben a háttérben dekódolódnak.
+const PRELOAD_SPRITES = [
+    `/themes/${theme}/background.webp`,
+    `/themes/${theme}/spaceship.png`,
+    `/themes/${theme}/asteroid.png`,
+    `/themes/${theme}/asteroid_explosive.png`,
+    `/themes/${theme}/boost.png`,
+    `/themes/${theme}/multishot.png`,
+    `/themes/${theme}/shield.png`,
+    `/themes/${theme}/strike.png`,
+    `/themes/${theme}/hunter.png`,
+];
+let assetsReady = false;
+let loadProgress = 0;            // 0–1, a betöltő-kijelzőhöz
+let _loadDone = 0;
+preloadImages(PRELOAD_SPRITES, () => {
+    _loadDone++;
+    loadProgress = _loadDone / PRELOAD_SPRITES.length;
+}).then(() => {
+    assetsReady = true;
+    // Multiplayer: jelezzük a partnernek, hogy az assetjeink betöltöttek (szinkron start).
+    if (isMultiplayer) {
+        update(ref(db, `lobbies/${lobbyCode}/ready`), { [role]: true }).catch(() => {});
+    }
+});
+
+// Service Worker: offline / gyenge-net cache (lásd /sw.js).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}
 
 // Game feel / „juice" effektek (csak space) — screen shake, részecske-robbanás,
 // torkolattűz, lebegő pont-számok. Lásd js/effects.js.
 import {
     shake, getShakeOffset, spawnExplosion, spawnScorePop, spawnShockwave,
     updateEffects, drawEffects, resetEffects, SHAKE_OVERSCAN,
+    isLowQuality, tickQuality,
 } from '/js/effects.js';
+import { getImage, preloadImages } from '/js/imageCache.js';
 
 // A juice-effektek csak a space témán aktívak (a többi téma változatlan marad).
 const juice = theme === 'space';
 
-document.body.style.backgroundImage = `url('/themes/${theme}/background.jpg')`;
+document.body.style.backgroundImage = `url('/themes/${theme}/background.webp')`;
 
 let canvas = document.getElementById('gameCanvas');
 let ctx = canvas.getContext('2d');
@@ -223,6 +281,11 @@ let mpSelfUnsub = null;
 let mpStatusUnsub = null;
 let mpRoundUnsub = null;
 let mpLobbyRootUnsub = null;     // a teljes lobby figyelése (partner-lecsatlakozás → menü)
+let mpReadyUnsub = null;         // betöltés-szinkron: ki töltötte be az assetjeit
+let mpCountdownAtUnsub = null;   // a közös countdown-anchor figyelése
+let mpPartnerReady = false;      // a partner jelezte-e, hogy az assetjei betöltöttek
+let mpCountdownAt = 0;           // közös countdown-kezdő időbélyeg (a host állítja be)
+let mpFirstStartDone = false;    // megtörtént-e már az első (szinkronizált) indítás
 let mpPartnerLeft = false;       // igaz, ha a partner kilépett (egyszeri menü-visszadobás)
 let mpRoundLocal = 0;            // a legutóbb alkalmazott co-op kör sorszáma (play again)
 let localState = 'alive';            // a saját játékos állapota: 'alive' | 'down'
@@ -291,6 +354,24 @@ if (isMultiplayer) {
         if (typeof r === 'number' && r > mpRoundLocal) mpRestart(r);
     });
 
+    // Betöltés-szinkron (az első indításhoz): mindkét kliens a saját assetjei
+    // betöltésekor beírja a ready/{role}=true-t. A countdown csak akkor indul, ha
+    // MINDKETTŐ kész; ekkor a host beállít egy közös countdownAt időbélyeget, amiből
+    // mindkét gép ugyanonnan számolja a 3-2-1-et → szinkron start.
+    mpReadyUnsub = onValue(ref(db, `lobbies/${lobbyCode}/ready`), (snap) => {
+        const r = snap.val() || {};
+        mpPartnerReady = !!r[otherRole];
+        if (isHost && r.host && r.guest && !mpCountdownAt) {
+            const at = Date.now() + 700;   // kis buffer, hogy mindkét kliens megkapja az anchor-t
+            mpCountdownAt = at;
+            update(ref(db, `lobbies/${lobbyCode}`), { countdownAt: at }).catch(() => {});
+        }
+    });
+    mpCountdownAtUnsub = onValue(ref(db, `lobbies/${lobbyCode}/countdownAt`), (snap) => {
+        const v = snap.val();
+        if (typeof v === 'number') mpCountdownAt = v;
+    });
+
     if (!isHost) {
         // GUEST: a host aszteroidáit és a közös pontot fogadja.
         mpAsteroidsUnsub = onValue(ref(db, `lobbies/${lobbyCode}/asteroids`), (snap) => {
@@ -347,6 +428,8 @@ function mpCleanup() {
     if (mpStatusUnsub)    { mpStatusUnsub();    mpStatusUnsub = null; }
     if (mpRoundUnsub)     { mpRoundUnsub();     mpRoundUnsub = null; }
     if (mpLobbyRootUnsub) { mpLobbyRootUnsub(); mpLobbyRootUnsub = null; }
+    if (mpReadyUnsub)     { mpReadyUnsub();     mpReadyUnsub = null; }
+    if (mpCountdownAtUnsub){ mpCountdownAtUnsub(); mpCountdownAtUnsub = null; }
 }
 
 // Minden frame: saját heartbeat írása + a partner jelenlétének figyelése.
@@ -851,7 +934,7 @@ function mpRestart(round) {
         update(ref(db, `lobbies/${lobbyCode}`), { asteroids: null, hits: null, powerups: null, score: 0 }).catch(() => {});
     }
 
-    lastTime = Date.now();
+    lastTime = performance.now();
 }
 
 let gameOver = false;
@@ -1042,10 +1125,19 @@ let lastCountdownStage = null;
 
 let animationFrameId = null;
 
+const MAX_DT = 0.05;   // 1 frame max 50 ms-et léptet — akadásnál lassú lesz, nem „ugrik át"
+
 function gameLoop() {
-    let now = Date.now();
+    let now = performance.now();
     let dt = (now - lastTime) / 1000;
     lastTime = now;
+    // Akadás (GC, tab-váltás, hang-dekód) esetén a dt megugorna → a hajó/kövek
+    // átteleportálnának és a lövedék áttunnelezne. A clamp ezt sima lassúdásra váltja.
+    if (dt > MAX_DT) dt = MAX_DT;
+    if (dt < 0) dt = 0;
+
+    // Auto-quality FPS-mérés (gyenge gépen kikapcsolja a glow-t / kevesebb részecske).
+    tickQuality();
 
     // Partner-jelenlét: heartbeat + timeout (állapottól függetlenül, game over alatt is).
     if (isMultiplayer) mpHeartbeatAndWatch();
@@ -1153,7 +1245,7 @@ function gameLoop() {
     ctx.font = "80px Arial";
     ctx.textAlign = "center";
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = isLowQuality() ? 0 : 15;
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 3;
     ctx.fillText("Zsasteroids", canvas.width / 2, 75);
@@ -1177,12 +1269,35 @@ function gameLoop() {
     }
 
     if (countdownRunning) {
+        // Betöltő-kapu. Singleplayerben: amíg a saját sprite-ok nincsenek készen, NEM
+        // indul a visszaszámlálás (különben a játékos már mozogna, mire megjelennek a
+        // textúrák). Multiplayerben (az ELSŐ körben) ráadásul MINDKÉT játékos assetjeit
+        // megvárjuk, és a host beállít egy KÖZÖS countdownAt időbélyeget → a 3-2-1
+        // mindkét gépen ugyanonnan számol, így a két játékos együtt indul.
+        const mpWaiting = isMultiplayer && !mpFirstStartDone && (!mpPartnerReady || !mpCountdownAt);
+        if (!assetsReady || mpWaiting) {
+            ctx.save();
+            ctx.font = '60px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const waitMsg = !assetsReady
+                ? `Loading… ${Math.round(loadProgress * 100)}%`
+                : 'Waiting for the other player…';
+            ctx.fillText(waitMsg, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+            ctx.restore();
+            animationFrameId = requestAnimationFrame(gameLoop);
+            return;
+        }
         if (!countdownStarted) {
-            countdownStartTime = Date.now();
+            // Első MP-kör: a host által megosztott közös anchor; egyébként (SP vagy
+            // restart-kör) a lokális idő — a meglévő viselkedés változatlan.
+            countdownStartTime = (isMultiplayer && !mpFirstStartDone) ? mpCountdownAt : Date.now();
             countdownStarted = true;
         }
 
         let elapsedTime = (Date.now() - countdownStartTime) / 1000;
+        if (elapsedTime < 0) elapsedTime = 0;   // a countdownAt-buffer alatt még nem kezdődött el
 
         let displayText = "";
         let countdownStage = null;
@@ -1203,6 +1318,7 @@ function gameLoop() {
             gameStartTime = Date.now();
             powerUpSpawnTime = gameStartTime + 5000;
             lastCountdownStage = null;
+            mpFirstStartDone = true;   // a következő körök (restart) lokális időzítéssel mennek
         }
 
         if (countdownStage !== null && countdownStage !== lastCountdownStage) {
@@ -1545,9 +1661,8 @@ function gameLoop() {
     animationFrameId = requestAnimationFrame(gameLoop);
 }
 
-let lastTime = Date.now();
-let backgroundImage = new Image();
-backgroundImage.src = `/themes/${theme}/background.jpg`;
+let lastTime = performance.now();
+let backgroundImage = getImage(`/themes/${theme}/background.webp`);
 
 const radius = 23
 
@@ -1653,7 +1768,7 @@ function restartGame() {
         if (hb) hb.innerHTML = '<i class="fas fa-question"></i>';   // ikon vissza „?"-re
     }
 
-    lastTime = Date.now();
+    lastTime = performance.now();
 
     cancelAnimationFrame(animationFrameId);
     animationFrameId = requestAnimationFrame(gameLoop);
@@ -1788,15 +1903,21 @@ let _hudPointsAt = 0;
 let _hudLastComboCount = 0;
 let _hudLastComboMult = 1;
 
+// Dirty-check segédek: csak akkor írunk a DOM-ba, ha tényleg változott az érték.
+// Így nem szemeteljük a layoutot frame-enként redundáns írásokkal.
+function _setText(el, v) { if (el && el.textContent !== v) el.textContent = v; }
+function _setHidden(el, v) { if (el && el.hidden !== v) el.hidden = v; }
+function _setWidth(el, pct) { const s = `${pct}%`; if (el && el._w !== s) { el.style.width = s; el._w = s; } }
+
 function updateDomHud() {
     const now = Date.now();
 
     // Idő + fogyó sáv
-    hudEls.time.textContent = Math.max(0, Math.ceil(timeRemaining));
-    hudEls.timeBar.style.width = `${Math.max(0, Math.min(1, timeRemaining / gameTime)) * 100}%`;
+    _setText(hudEls.time, String(Math.max(0, Math.ceil(timeRemaining))));
+    _setWidth(hudEls.timeBar, Math.max(0, Math.min(1, timeRemaining / gameTime)) * 100);
 
     // Pont + „+X" pop (pontváltozáskor felvillan, majd elhalványul)
-    hudEls.score.textContent = score;
+    _setText(hudEls.score, String(score));
     if (score !== _hudLastScore) {
         if (lastEarnedPoints !== null) hudEls.plus.textContent = `+${lastEarnedPoints}`;
         _hudPointsAt = now;
@@ -1810,14 +1931,14 @@ function updateDomHud() {
 
     // Strike figyelmeztetés
     if (strikeCountdownText) {
-        hudEls.strikeText.textContent = strikeCountdownText;
-        hudEls.strike.hidden = false;
+        _setText(hudEls.strikeText, strikeCountdownText);
+        _setHidden(hudEls.strike, false);
     } else {
-        hudEls.strike.hidden = true;
+        _setHidden(hudEls.strike, true);
     }
 
     // Vezérlés-tipp csak a 3-2-1 visszaszámlálás alatt
-    hudEls.controlsHint.hidden = !countdownRunning;
+    _setHidden(hudEls.controlsHint, !countdownRunning);
 
     // Frenzy-jelző: előbb a 3-2-1 visszaszámláló szöveg, majd az aktív „dupla pont".
     if (hudEls.frenzy) {

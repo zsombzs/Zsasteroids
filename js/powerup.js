@@ -1,19 +1,15 @@
 import { CircleShape } from "./circleshape.js";
 import { theme } from "./main.js";
+import { getImage } from "./imageCache.js";
 class PowerUp extends CircleShape {
     constructor(x, y, type = "boost") {
         super(x, y, 34.5, 31.5);
         this.type = type;
-        this.image = new Image();
-        this.image.src = `/themes/${theme}/${type}.png`;
-        this.imageLoaded = false;
-        this.image.onload = () => {
-            this.imageLoaded = true;
-        };
+        this.image = getImage(`/themes/${theme}/${type}.png`);
     }
 
     draw(ctx) {
-        if (this.imageLoaded) {
+        if (this.image.complete && this.image.naturalWidth) {
             // A FELVÉTELI hitbox a player.collidesWithCircle-ben player.radius (65.25) +
             // this.radius alapján számít — ez nagyobb, mint amekkorának az ikon eddig
             // látszott (a player kirajzolt sugara ~53.5 space-en). Ezért az ikont

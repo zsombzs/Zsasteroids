@@ -2,20 +2,12 @@ import { CircleShape } from './circleshape.js';
 import { SHOT_RADIUS } from './constants.js';
 import { theme } from "./main.js";
 
-import { getMuted, getSoundVariant } from './soundManager.js';
+import { getSoundVariant, playSound } from './soundManager.js';
 
 function playShootSound() {
-    if (getMuted()) return;
-  
-    let path = '/assets/audio/shoot.mp3';
-    if (getSoundVariant()) {
-      path = '/assets/audio/bodizs_piu.mp3';
-    }
-  
-    const shootSound = new Audio(path);
-    shootSound.volume = 0.1;
-    shootSound.currentTime = 0;
-    shootSound.play().catch(e => console.log('Shoot sound error:', e));
+    // Pool-on keresztül: nem hoz létre új Audio-t lövésenként (lásd soundManager.js).
+    const path = getSoundVariant() ? '/assets/audio/bodizs_piu.mp3' : '/assets/audio/shoot.mp3';
+    playSound(path, 0.1);
   }
   
   export { playShootSound };

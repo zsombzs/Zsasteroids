@@ -2,6 +2,8 @@ import { CircleShape } from './circleshape.js';
 import { ASTEROID_MIN_RADIUS } from './constants.js';
 import { Player } from "./player.js"
 import { theme } from "./main.js"
+import { getImage } from "./imageCache.js"
+import { isLowQuality } from "./effects.js"
 
 class Asteroid extends CircleShape {
     constructor(x, y, radius, updatable, drawable, asteroids, type = 'normal') {
@@ -18,13 +20,10 @@ class Asteroid extends CircleShape {
 
         this.rotation = Math.random() * Math.PI * 2;
 
-        this.image = new Image();
+        // Közös cache: a téma aszteroida-sprite-ját egyszer töltjük be, minden
+        // példány ezt használja (a drawImage úgyis explicit méretet kap).
         const file = type === 'explosive' ? 'asteroid_explosive' : 'asteroid';
-        this.image.src = `/themes/${theme}/${file}.png`;
-        this.image.onload = () => {
-            this.image.width = radius * 2;
-            this.image.height = radius * 2;
-        };
+        this.image = getImage(`/themes/${theme}/${file}.png`);
         this.hitboxOffset = { x: 0, y: theme === 'ocean' ? -4 : 0 };
         this.setHitbox();
     }
@@ -54,7 +53,7 @@ class Asteroid extends CircleShape {
 
         // Robbanó kő: lüktető vörös ragyogás, hogy egyértelmű legyen „lődd meg a
         // láncért" (csak space). Tisztán rajzolt, az asset fölé.
-        if (this.type === 'explosive' && theme === 'space') {
+        if (this.type === 'explosive' && theme === 'space' && !isLowQuality()) {
             const p = 0.6 + 0.4 * Math.sin(Date.now() / 160);
             ctx.shadowColor = `rgba(255, 90, 40, ${0.7 * p})`;
             ctx.shadowBlur = 24 * p;

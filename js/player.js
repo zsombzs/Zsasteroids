@@ -6,7 +6,8 @@ import { powerUps, drawable } from "./main.js"
 import { theme } from "./main.js"
 
 import { playSound, getSoundVariant } from './soundManager.js';
-import { spawnMuzzleFlash } from './effects.js';
+import { spawnMuzzleFlash, isLowQuality } from './effects.js';
+import { getImage } from './imageCache.js';
 
 // ── Dash (csak space) — gyors lökés a nézési irányba, i-frame-mel ────────────
 export const DASH_SPEED = 900;        // px/s a dash ideje alatt (a normál 290 fölött)
@@ -23,12 +24,7 @@ class Player extends CircleShape {
         this.updatable = updatable;
         this.drawable = drawable;
         this.shots = shots;
-        this.image = new Image();
-        this.image.src = `/themes/${theme}/spaceship.png`;
-        this.image.onload = () => {
-            this.imageLoaded = true;
-        };
-        this.imageLoaded = false
+        this.image = getImage(`/themes/${theme}/spaceship.png`);
         this.speedMultiplier = 1;
         this.shootTimerMultiplier = 1;
         this.powerUpTimeout = null
@@ -109,7 +105,7 @@ class Player extends CircleShape {
         }
         // Dash utánkép: a hajó 2–3 halványuló másolata a korábbi pozíciókon
         // (csak space). A hajó alatt rajzoljuk, így a friss hajó van legfelül.
-        if (theme === 'space' && this.imageLoaded && this.trail.length) {
+        if (theme === 'space' && this.image.complete && this.image.naturalWidth && this.trail.length) {
             for (let i = 0; i < this.trail.length; i++) {
                 const t = this.trail[i];
                 // Wrap-around ugrás esetén ne húzzunk csíkot a túloldalra.
@@ -140,8 +136,10 @@ class Player extends CircleShape {
             ctx.save();
             ctx.translate(this.position.x, this.position.y);
             // neon ragyogás (glow)
-            ctx.shadowColor = `rgba(0, 225, 255, ${intensity})`;
-            ctx.shadowBlur = 18;
+            if (!isLowQuality()) {
+                ctx.shadowColor = `rgba(0, 225, 255, ${intensity})`;
+                ctx.shadowBlur = 18;
+            }
             // halvány belső kitöltés
             ctx.beginPath();
             ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -191,7 +189,7 @@ class Player extends CircleShape {
             ctx.restore();
         }
 
-        if (this.imageLoaded) {
+        if (this.image.complete && this.image.naturalWidth) {
             ctx.save();
             ctx.translate(this.position.x, this.position.y);
             ctx.rotate(this.rotation * Math.PI / 180);

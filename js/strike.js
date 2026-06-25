@@ -1,6 +1,7 @@
 import { CircleShape } from './circleshape.js';
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from './constants.js';
 import { theme } from './main.js';
+import { getImage } from './imageCache.js';
 
 class Strike extends CircleShape {
     constructor(updatable, drawable, player, onHitPlayer, onHitByShot) {
@@ -30,8 +31,7 @@ class Strike extends CircleShape {
         this.updatable.push(this);
         this.drawable.push(this);
 
-        this.image = new Image();
-        this.image.src = `/themes/${theme}/strike.png`;
+        this.image = getImage(`/themes/${theme}/strike.png`);
     }
 
     update(dt) {

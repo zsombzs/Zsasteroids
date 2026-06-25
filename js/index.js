@@ -1,6 +1,11 @@
 import { initAuth, signInWithGoogle, createProfile, isUsernameTaken, currentUser } from '/js/auth.js';
 import { createLobby, joinLobby, deleteLobby, listenLobby, cancelLobbyCleanup, getPlayerId, getPlayerName } from '/js/lobby.js';
 
+// Service Worker: offline / gyenge-net cache (lásd /sw.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
 // ── Modal helpers ──
 function openModal(id) {
   document.getElementById(id).hidden = false;
