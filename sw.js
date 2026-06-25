@@ -19,12 +19,19 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// Csak TELJES (200) same-origin választ cache-elünk. A 206 (Partial Content —
+// pl. egy <audio>/<video> Range-kérése) NEM tárolható a Cache API-ban (hibát dob),
+// ezért kihagyjuk; a put-ot is becsomagoljuk, hogy semmilyen hiba ne szálljon el.
+function cacheable(res) {
+  return res && res.status === 200 && res.type === 'basic';
+}
+
 async function cacheFirst(req) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(req);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res && res.ok && res.type === 'basic') cache.put(req, res.clone());
+  if (cacheable(res)) cache.put(req, res.clone()).catch(() => {});
   return res;
 }
 
@@ -32,7 +39,7 @@ async function networkFirst(req) {
   const cache = await caches.open(CACHE);
   try {
     const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());
+    if (cacheable(res)) cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (e) {
     const hit = await cache.match(req);
@@ -51,6 +58,9 @@ const ASSET_RE = /\.(png|jpe?g|webp|gif|svg|ico|mp3|ogg|wav|m4a|woff2?|ttf|otf|e
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  // Range-kéréseket (audio/video részleges letöltés) hagyjuk a böngészőre — ne
+  // menjenek a cache-en át, mert a 206 válasz nem tárolható/kezelhető jól.
+  if (req.headers.has('range')) return;
 
   let url;
   try { url = new URL(req.url); } catch (e) { return; }

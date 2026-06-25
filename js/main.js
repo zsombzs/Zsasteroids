@@ -283,6 +283,12 @@ let mpRoundUnsub = null;
 let mpLobbyRootUnsub = null;     // a teljes lobby figyelése (partner-lecsatlakozás → menü)
 let mpReadyUnsub = null;         // betöltés-szinkron: ki töltötte be az assetjeit
 let mpCountdownAtUnsub = null;   // a közös countdown-anchor figyelése
+let mpHunterUnsub = null;        // GUEST: a host hunter-állapotát figyeli
+let mpHHitsUnsub = null;         // HOST: a guest hunter-találatait figyeli
+let mpHunterState = null;        // GUEST: a legutóbb fogadott hunter-állapot (null = nincs)
+let mpHunterAt = 0;              // GUEST: mikor érkezett (lövedék-extrapolációhoz)
+let mpHHitCounter = 0;           // GUEST: egyedi kulcs a hunter-találat-jelentésekhez
+const mpProcessedHHits = new Set(); // HOST: már feldolgozott guest-hunter-találatok
 let mpPartnerReady = false;      // a partner jelezte-e, hogy az assetjei betöltöttek
 let mpCountdownAt = 0;           // közös countdown-kezdő időbélyeg (a host állítja be)
 let mpFirstStartDone = false;    // megtörtént-e már az első (szinkronizált) indítás
@@ -311,7 +317,7 @@ if (isMultiplayer) {
         // Jelenlét: minden partner-frissítés (pozíció / heartbeat / revive) "életjel".
         mpSeenPartner = true;
         mpLastPartnerSeen = Date.now();
-        remotePlayer.update(d.x, d.y, d.rotation, d.state);
+        remotePlayer.update(d.x, d.y, d.rotation, d.state, d);
         remotePlayer.reviveProgress = d.reviveProgress || 0;
         remotePlayer.reviveCdUntil = d.reviveCdUntil || 0;
     });
@@ -388,10 +394,19 @@ if (isMultiplayer) {
             if (typeof h.combo === 'number') comboMultiplier = h.combo;
             if (typeof h.comboAt === 'number') lastComboHitTime = h.comboAt;
         });
+        // GUEST: a host vadász-drónja (csak megjelenítés + saját lövés-célzás).
+        mpHunterUnsub = onValue(ref(db, `lobbies/${lobbyCode}/hunter`), (snap) => {
+            mpHunterState = snap.val();   // null = nincs hunter
+            mpHunterAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        });
     } else {
         // HOST: a guest "hit" eseményeit fogadja és autoritatívan feldolgozza.
         mpHitsUnsub = onValue(ref(db, `lobbies/${lobbyCode}/hits`), (snap) => {
             mpProcessHits(snap.val());
+        });
+        // HOST: a guest vadász-találatait fogadja és sebzi a drónt.
+        mpHHitsUnsub = onValue(ref(db, `lobbies/${lobbyCode}/hhits`), (snap) => {
+            mpProcessHunterHits(snap.val());
         });
     }
 
@@ -430,6 +445,8 @@ function mpCleanup() {
     if (mpLobbyRootUnsub) { mpLobbyRootUnsub(); mpLobbyRootUnsub = null; }
     if (mpReadyUnsub)     { mpReadyUnsub();     mpReadyUnsub = null; }
     if (mpCountdownAtUnsub){ mpCountdownAtUnsub(); mpCountdownAtUnsub = null; }
+    if (mpHunterUnsub)    { mpHunterUnsub();    mpHunterUnsub = null; }
+    if (mpHHitsUnsub)     { mpHHitsUnsub();     mpHHitsUnsub = null; }
 }
 
 // Minden frame: saját heartbeat írása + a partner jelenlétének figyelése.
@@ -481,6 +498,15 @@ function mpSendPosition() {
         y: Math.round(player.position.y),
         rotation: Math.round(player.rotation),
         state: 'alive',
+        // Vizuál-állapot a partnernek: pajzs, dash, és az aktív lövedékek.
+        shield: (player.shieldActive || player._inShieldGrace()) ? 1 : 0,
+        dash: (player.dashUntil && Date.now() < player.dashUntil) ? 1 : 0,
+        shots: shots.slice(0, 16).map(s => ({
+            x: Math.round(s.position.x),
+            y: Math.round(s.position.y),
+            vx: Math.round(s.velocity.x),
+            vy: Math.round(s.velocity.y),
+        })),
     }).catch(() => { /* hálózati hibát csendben elnyelünk, ne akassza a loopot */ });
 }
 
@@ -504,11 +530,128 @@ function mpHostSync() {
             t: a.type === 'explosive' ? 'e' : 'n',
         };
     }
+    // Hunter (host-autoritatív) szinkronizálása a guestnek — render + guest-célzás.
+    hunters = hunters.filter(hh => updatable.includes(hh));   // élő példányok
+    const lh = hunters[0] || null;
+    let hunterData = null;
+    if (lh) {
+        hunterData = {
+            x: Math.round(lh.position.x),
+            y: Math.round(lh.position.y),
+            h: Math.round(lh.heading * 1000) / 1000,   // heading (radián)
+            hp: lh.hp,
+            f: Date.now() < lh.flashUntil ? 1 : 0,
+            p: (lh.projectiles || []).slice(0, 24).map(pr => ({
+                x: Math.round(pr.x), y: Math.round(pr.y),
+                vx: Math.round(pr.vx), vy: Math.round(pr.vy),
+            })),
+        };
+    }
     update(ref(db, `lobbies/${lobbyCode}`), {
         asteroids: map,
         score,
         hud: { combo: comboMultiplier, comboAt: lastComboHitTime },
+        hunter: hunterData,   // null = nincs hunter (törli a node-ot)
     }).catch(() => {});
+}
+
+// ── Hunter co-op (host-autoritatív; a guest rendereli + lőheti) ───────────────
+const MP_HUNTER_R = 40;        // = HUNTER_RADIUS (hunter.js)
+const MP_HUNTER_SHOT_R = 11;   // = ENEMY_SHOT_R
+const MP_HUNTER_HP = 3;        // = HUNTER_HP
+
+// GUEST: a host által szinkronizált vadász-drón kirajzolása (csak megjelenítés;
+// a logikát/AI-t a host futtatja). Replikálja a Hunter.draw lényegét.
+function drawMpHunter(ctx) {
+    const st = mpHunterState;
+    if (!st) return;
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const dt = Math.min(0.3, (now - mpHunterAt) / 1000);
+
+    // Lövedékek (a host vx/vy-jával extrapolálva a 20fps simítására).
+    for (const p of (st.p || [])) {
+        const px = p.x + (p.vx || 0) * dt;
+        const py = p.y + (p.vy || 0) * dt;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        if (!isLowQuality()) { ctx.shadowColor = 'rgba(255, 90, 40, 0.9)'; ctx.shadowBlur = 14; }
+        ctx.fillStyle = '#ff7a3a';
+        ctx.beginPath(); ctx.arc(px, py, MP_HUNTER_SHOT_R, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(px, py, MP_HUNTER_SHOT_R * 0.45, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    // A drón sprite.
+    const img = getImage('/themes/space/hunter.png');
+    const ds = MP_HUNTER_R * 2 * 1.3;
+    const glow = 0.5 + 0.5 * Math.sin(now / 140);
+    ctx.save();
+    ctx.translate(st.x, st.y);
+    ctx.rotate((st.h || 0) + Math.PI / 2);
+    if (!isLowQuality()) { ctx.shadowColor = `rgba(255, 70, 40, ${0.6 + 0.3 * glow})`; ctx.shadowBlur = 18 + 8 * glow; }
+    if (img.complete && img.naturalWidth) {
+        ctx.drawImage(img, -ds / 2, -ds / 2, ds, ds);
+        if (st.f) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.6;
+            ctx.drawImage(img, -ds / 2, -ds / 2, ds, ds);
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    } else {
+        ctx.beginPath(); ctx.arc(0, 0, MP_HUNTER_R, 0, Math.PI * 2); ctx.fillStyle = '#ff5a2a'; ctx.fill();
+    }
+    ctx.restore();
+
+    // HP-pipák.
+    const pipW = 12, gap = 5;
+    const total = MP_HUNTER_HP * pipW + (MP_HUNTER_HP - 1) * gap;
+    const x0 = st.x - total / 2;
+    const y = st.y - ds / 2 - 14;
+    const hp = (typeof st.hp === 'number') ? st.hp : MP_HUNTER_HP;
+    for (let i = 0; i < MP_HUNTER_HP; i++) {
+        ctx.fillStyle = i < hp ? '#ff6a3a' : 'rgba(255, 255, 255, 0.18)';
+        ctx.fillRect(x0 + i * (pipW + gap), y, pipW, 5);
+    }
+}
+
+// GUEST: a saját lövedékei eltalálják-e a host drónt? Ha igen, jelenti a hostnak
+// (a host sebzi a drónt), és lokálisan eltünteti a lövedéket.
+function mpGuestHunterShots() {
+    if (isHost) return;
+    const st = mpHunterState;
+    if (!st) return;
+    for (const bullet of [...shots]) {
+        const dx = bullet.position.x - st.x;
+        const dy = bullet.position.y - st.y;
+        if (Math.hypot(dx, dy) < MP_HUNTER_R + bullet.hitboxRadius) {
+            push(ref(db, `lobbies/${lobbyCode}/hhits`), { t: Date.now() }).catch(() => {});
+            bullet.kill(updatable, drawable, shots);
+            if (juice) spawnExplosion(bullet.position.x, bullet.position.y, '#ffd24a', 6, { speedMax: 200, sizeMax: 4 });
+        }
+    }
+}
+
+// HOST: a guest hunter-találatainak feldolgozása (push-key-enként 1 sebzés).
+function mpProcessHunterHits(map) {
+    if (!map) return;
+    const lh = hunters.find(hh => updatable.includes(hh));
+    for (const key in map) {
+        if (mpProcessedHHits.has(key)) continue;
+        mpProcessedHHits.add(key);
+        if (lh && lh.hp > 0) {
+            lh.hp -= 1;
+            lh.flashUntil = Date.now() + 130;
+            if (lh.hp <= 0) {
+                lh.onKill(lh.position.x, lh.position.y);
+                lh.destroy();
+            } else {
+                playSound(getSoundVariant() ? '/assets/audio/adi_death.mp3' : '/assets/audio/hit.mp3', 0.12);
+            }
+        }
+        remove(ref(db, `lobbies/${lobbyCode}/hhits/${key}`)).catch(() => {});
+    }
 }
 
 // GUEST: a Firebase aszteroida-térkép alkalmazása. Id alapján egyezteti a lokális
@@ -868,6 +1011,9 @@ function mpRestart(round) {
 
     updatable.length = 0;
     drawable.length = 0;
+    hunters = [];
+    mpHunterState = null;
+    mpProcessedHHits.clear();
     shots.length = 0;
     asteroids.length = 0;
     powerUps.length = 0;
@@ -1120,6 +1266,7 @@ let strikeCountdownText = null;
 
 // Vadász-drón (csak space): eltelt játékidő (mp) szerinti spawn-időpontok.
 let pendingHunterTimes = [15, 45];
+let hunters = [];   // élő Hunter példányok (host-autoritatív; MP-ben Firebase-re szinkronizálva)
 
 let lastCountdownStage = null;
 
@@ -1208,13 +1355,15 @@ function gameLoop() {
 
         }
 
-        // Vadász-drón spawn (csak space): a megadott eltelt időnél.
-        if (theme === 'space' && pendingHunterTimes.length > 0
+        }   // /if (!isMultiplayer) — strike (a hunter alább, MP-ben is fut)
+
+        // Vadász-drón spawn (csak space): SP-ben és MP-host-on fut (host-autoritatív;
+        // a guest a host Firebase-syncjéből rendereli). A strike egyelőre SP-only marad.
+        if (hostSim && theme === 'space' && pendingHunterTimes.length > 0
             && elapsedGameTime >= pendingHunterTimes[0]) {
             spawnHunter();
             pendingHunterTimes.shift();
         }
-        }   // /if (!isMultiplayer) — strike + hunter
     }
 
     if (!useDomHud) {
@@ -1446,7 +1595,7 @@ function gameLoop() {
         updatable.forEach(object => object.update(dt));
         // Ha a partner kilépett, ne írjunk többé a (törölt) lobbyba — különben a
         // pozíció-/world-sync újra létrehozná a lobby node-ot.
-        if (isMultiplayer && !mpPartnerLeft) { mpDetectPickups(); mpSendPosition(); mpHostSync(); }
+        if (isMultiplayer && !mpPartnerLeft) { mpDetectPickups(); mpSendPosition(); mpHostSync(); mpGuestHunterShots(); }
 
         if (hostSim) for (let asteroid of [...asteroids]) {
             if (asteroid.dead) continue;   // láncreakcióban már elpusztult — ne ölje a játékost, ne pontozzuk újra
@@ -1510,6 +1659,7 @@ function gameLoop() {
 
         drawable.forEach(object => object.draw(ctx));
         if (isMultiplayer && remotePlayer) remotePlayer.draw(ctx);
+        if (isMultiplayer && !isHost) drawMpHunter(ctx);   // a host drónját a guest a syncből rajzolja
         if (isMultiplayer) mpDrawDownOverlays(ctx);
 
         // Near-miss popok: cián villanás (táguló gyűrű) + lebegő „NEAR MISS +N" szöveg.
@@ -1709,6 +1859,9 @@ function restartGame() {
 
     updatable.length = 0;
     drawable.length = 0;
+    hunters = [];
+    mpHunterState = null;
+    mpProcessedHHits.clear();
     shots.length = 0;
     asteroids.length = 0;
 
@@ -2235,7 +2388,7 @@ function spawnStrike() {
 // Vadász-drón létrehozása + callbackek (a Strike mintájára).
 function spawnHunter() {
     playSound('/assets/audio/strike_alarm.mp3', 0.6);   // spawn-figyelmeztetés (meglévő hang)
-    new Hunter(
+    const h = new Hunter(
         updatable,
         drawable,
         player,
@@ -2249,17 +2402,23 @@ function spawnHunter() {
                     shake(7, 160);
                 }
             } else if (!player.isInvincible()) {
-                gameOver = true;
-                gameOverTime = Date.now();
-                gameOverReason = 'collision';
-                if (juice) {
-                    spawnExplosion(player.position.x, player.position.y, '#ff7a4a', 28, { speedMax: 440, sizeMax: 7, lifeMax: 0.85 });
-                    spawnExplosion(player.position.x, player.position.y, '#ffd24a', 14, { speedMax: 300, sizeMax: 5 });
-                    shake(15, 340);
-                }
-                if (!scoreSubmitted) {
-                    scoreSubmitted = true;
-                    saveScore(score);
+                if (isMultiplayer) {
+                    // Co-opban nincs azonnali game over: a host „down" állapotba kerül,
+                    // a partnere élesztheti (ugyanaz, mint az aszteroida-ütközésnél).
+                    if (localState === 'alive' && Date.now() >= reviveInvincibleUntil) mpGoDown();
+                } else {
+                    gameOver = true;
+                    gameOverTime = Date.now();
+                    gameOverReason = 'collision';
+                    if (juice) {
+                        spawnExplosion(player.position.x, player.position.y, '#ff7a4a', 28, { speedMax: 440, sizeMax: 7, lifeMax: 0.85 });
+                        spawnExplosion(player.position.x, player.position.y, '#ffd24a', 14, { speedMax: 300, sizeMax: 5 });
+                        shake(15, 340);
+                    }
+                    if (!scoreSubmitted) {
+                        scoreSubmitted = true;
+                        saveScore(score);
+                    }
                 }
             }
             // pajzs-grace / dash i-frame alatt nincs hatás
@@ -2283,6 +2442,7 @@ function spawnHunter() {
             }
         }
     );
+    hunters.push(h);   // host-sync + cleanup nyilvántartás
 }
 
 const soundToggleButton = document.getElementById('soundToggle');
