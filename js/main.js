@@ -498,10 +498,11 @@ function mpSendPosition() {
         y: Math.round(player.position.y),
         rotation: Math.round(player.rotation),
         state: 'alive',
-        // Vizuál-állapot a partnernek: pajzs, dash, és az aktív lövedékek.
+        // Vizuál-állapot a partnernek: pajzs, dash, hajtómű-láng (W), lövedékek.
         shield: (player.shieldActive || player._inShieldGrace()) ? 1 : 0,
         dash: (player.dashUntil && Date.now() < player.dashUntil) ? 1 : 0,
-        shots: shots.slice(0, 16).map(s => ({
+        thrust: (typeof window !== 'undefined' && window.keys && window.keys['w']) ? 1 : 0,
+        shots: shots.slice(-24).map(s => ({   // a LEGÚJABB lövedékek (nem a legrégebbiek)
             x: Math.round(s.position.x),
             y: Math.round(s.position.y),
             vx: Math.round(s.velocity.x),
@@ -1593,6 +1594,21 @@ function gameLoop() {
             }
         }
         updatable.forEach(object => object.update(dt));
+
+        // Képernyőn kívülre repült lövedékek eltakarítása. Korábban a lövedékek
+        // CSAK ütközéskor tűntek el — a célt vétő lövések örökre a tömbökben
+        // maradtak, így idővel egyre gyűltek: folyamatosan növekvő lag (főleg
+        // boost/multishot mellett), és a co-op shots-syncbe is elavult, rég
+        // képernyőn kívüli lövedékek kerültek (a partner nem látta az aktuálisakat).
+        const SHOT_MARGIN = 60;
+        for (const bullet of [...shots]) {
+            const p = bullet.position;
+            if (p.x < -SHOT_MARGIN || p.x > SCREEN_WIDTH + SHOT_MARGIN ||
+                p.y < -SHOT_MARGIN || p.y > SCREEN_HEIGHT + SHOT_MARGIN) {
+                bullet.kill(updatable, drawable, shots);
+            }
+        }
+
         // Ha a partner kilépett, ne írjunk többé a (törölt) lobbyba — különben a
         // pozíció-/world-sync újra létrehozná a lobby node-ot.
         if (isMultiplayer && !mpPartnerLeft) { mpDetectPickups(); mpSendPosition(); mpHostSync(); mpGuestHunterShots(); }
